@@ -26,6 +26,8 @@
 	<string>App 请求打开麦克风,进行录音</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>App 想要访问您的相册,获取照片</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>请求打开语音识别服务，用于语音识别输入</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

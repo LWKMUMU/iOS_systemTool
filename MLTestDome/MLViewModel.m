@@ -9,16 +9,128 @@
 #import "MLViewModel.h"
 #import <MobileCoreServices/MobileCoreServices.h>
 #import <AVFoundation/AVFoundation.h>
+#import <Speech/Speech.h>
 
-@interface MLViewModel()<AVAudioRecorderDelegate>
-
+@interface MLViewModel()<AVAudioRecorderDelegate,SFSpeechRecognizerDelegate>
 @property (nonatomic,strong) AVAudioRecorder * recorder;
+
+@property (nonatomic,strong) SFSpeechRecognizer *speechRecognizer;
+@property (nonatomic,strong) AVAudioEngine *audioEngine;
+@property (nonatomic,strong) SFSpeechRecognitionTask *recognitionTask;
+@property (nonatomic,strong) SFSpeechAudioBufferRecognitionRequest *recognitionRequest;
 
 @end
 
 
 @implementation MLViewModel
 
+#pragma mark - lazyload
+- (AVAudioEngine *)audioEngine{
+    if (!_audioEngine) {
+        _audioEngine = [[AVAudioEngine alloc] init];
+    }
+    return _audioEngine;
+}
+- (SFSpeechRecognizer *)speechRecognizer{
+    if (!_speechRecognizer) {
+        NSLocale *local =[[NSLocale alloc] initWithLocaleIdentifier:@"zh_CN"];
+        _speechRecognizer =[[SFSpeechRecognizer alloc] initWithLocale:local];
+        _speechRecognizer.delegate = self;
+    }
+    return _speechRecognizer;
+}
+
+- (void)speechRecognitionAction_Perfect:(void(^)(BOOL perfect,NSString * msg))perfect{
+    
+    if ([SFSpeechRecognizer authorizationStatus] == SFSpeechRecognizerAuthorizationStatusAuthorized){
+        
+        [self starteRecording];
+        perfect(YES,nil);
+    }else{
+        [SFSpeechRecognizer  requestAuthorization:^(SFSpeechRecognizerAuthorizationStatus status) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                switch (status) {
+                    case SFSpeechRecognizerAuthorizationStatusNotDetermined:
+                        perfect(NO,@"App需要您的同意开启语音识别权限,才能使用语音识别技术");
+                        break;
+                    case SFSpeechRecognizerAuthorizationStatusDenied:
+
+                        perfect(NO,@"App需要您的同意开启语音识别权限,才能使用语音识别技术");
+                        break;
+                    case SFSpeechRecognizerAuthorizationStatusRestricted:
+                         perfect(NO,@"语音识别在这台设备上受到限制");
+                        break;
+                   
+                    default:
+                        break;
+                }
+                
+            });
+        }];
+    }
+}
+- (void)shopspeechRecognitionAction{
+    if (self.audioEngine.isRunning) {
+        [self.audioEngine stop];
+        if (_recognitionRequest) {
+            [_recognitionRequest endAudio];
+        }
+    }
+}
+- (void)starteRecording{
+
+    if (_recognitionTask) {
+        [_recognitionTask cancel];
+        _recognitionTask = nil;
+    }
+    
+    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+    NSError *error;
+    [audioSession setCategory:AVAudioSessionCategoryRecord error:&error];
+    NSParameterAssert(!error);
+    [audioSession setMode:AVAudioSessionModeMeasurement error:&error];
+    NSParameterAssert(!error);
+    [audioSession setActive:YES withOptions:AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation error:&error];
+    NSParameterAssert(!error);
+    
+    _recognitionRequest = [[SFSpeechAudioBufferRecognitionRequest alloc] init];
+    AVAudioInputNode *inputNode = self.audioEngine.inputNode;
+    NSAssert(inputNode, @"录入设备没有准备好");
+    NSAssert(_recognitionRequest, @"请求初始化失败");
+    _recognitionRequest.shouldReportPartialResults = YES;
+    __weak typeof(self) weakSelf = self;
+    _recognitionTask = [self.speechRecognizer recognitionTaskWithRequest:_recognitionRequest resultHandler:^(SFSpeechRecognitionResult * _Nullable result, NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        BOOL isFinal = NO;
+        if (result) {
+            //            strongSelf.resultStringLable.text = result.bestTranscription.formattedString;
+            [strongSelf.delegate identifyResults:result.bestTranscription.formattedString];
+            isFinal = result.isFinal;
+        }
+        if (error || isFinal) {
+            [self.audioEngine stop];
+            [inputNode removeTapOnBus:0];
+            [strongSelf.delegate identifyFinish];
+            strongSelf.recognitionTask = nil;
+            strongSelf.recognitionRequest = nil;
+        }
+        
+    }];
+    
+    AVAudioFormat *recordingFormat = [inputNode outputFormatForBus:0];
+    //在添加tap之前先移除上一个  不然有可能报"Terminating app due to uncaught exception 'com.apple.coreaudio.avfaudio',"之类的错误
+    [inputNode removeTapOnBus:0];
+    [inputNode installTapOnBus:0 bufferSize:1024 format:recordingFormat block:^(AVAudioPCMBuffer * _Nonnull buffer, AVAudioTime * _Nonnull when) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (strongSelf.recognitionRequest) {
+            [strongSelf.recognitionRequest appendAudioPCMBuffer:buffer];
+        }
+    }];
+    
+    [self.audioEngine prepare];
+    [self.audioEngine startAndReturnError:&error];
+    NSParameterAssert(!error);
+}
 - (void)addImage_lacol:(BOOL)lacol chooseImage:(BOOL)chooseImage perfect:(void(^)(BOOL perfect,UIImagePickerController * PickerController,NSString * msg))perfect{
     
     UIImagePickerController * pickerController = [[UIImagePickerController alloc] init];

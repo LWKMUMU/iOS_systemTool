@@ -440,7 +440,7 @@
 				DEVELOPMENT_TEAM = S26CLZB2JK;
 				INFOPLIST_FILE = MLTestDome/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = com.hui2020.huihui;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dome.test;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "e250edf4-223f-4cde-b542-f32feaaec53a";
 				PROVISIONING_PROFILE_SPECIFIER = hui2020.com.DevelopmentProfiles;
@@ -456,7 +456,7 @@
 				DEVELOPMENT_TEAM = S26CLZB2JK;
 				INFOPLIST_FILE = MLTestDome/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = com.hui2020.huihui;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dome.test;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "e250edf4-223f-4cde-b542-f32feaaec53a";
 				PROVISIONING_PROFILE_SPECIFIER = hui2020.com.DevelopmentProfiles;

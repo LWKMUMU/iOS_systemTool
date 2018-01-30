@@ -11,11 +11,14 @@
 #import <MobileCoreServices/MobileCoreServices.h>
 #import <AVFoundation/AVFoundation.h>
 
-@interface ViewController ()<UIImagePickerControllerDelegate,UINavigationControllerDelegate>
+@interface ViewController ()<UIImagePickerControllerDelegate,UINavigationControllerDelegate,MLSSpeechRecognizerDelegate>
 
 @property (nonatomic,strong)MLViewModel * viewModel;
 @property (nonatomic,assign)BOOL lacol;
+@property (weak, nonatomic) IBOutlet UITextView *textView;
 @property (weak, nonatomic) IBOutlet UIButton *mlBtn;
+@property (nonatomic,strong)NSString * originalText;
+
 @end
 
 @implementation ViewController
@@ -23,13 +26,13 @@
 - (MLViewModel *)viewModel{
     if (!_viewModel){
         _viewModel = [[MLViewModel alloc] init];
-    }
+            }
     return _viewModel;
 }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-
+    self.viewModel.delegate = self;
 }
 - (IBAction)showBtnAction:(id)sender {
     if ([self.mlBtn.titleLabel.text isEqualToString:@"完成"]){
@@ -39,7 +42,15 @@
             NSLog(@"录音的地址 = %@",url.path);
         }];
         return;
+    }else if ([self.mlBtn.titleLabel.text isEqualToString:@"完成识别"]){
+        
+        [self.viewModel shopspeechRecognitionAction];
+        
+        [self.mlBtn setTitle:@"MLShow" forState:UIControlStateNormal];
+        
+        return;
     }
+    
     UIAlertController * alertController = [UIAlertController alertControllerWithTitle:@"求求您选一个" message:@"🤕" preferredStyle:UIAlertControllerStyleActionSheet];
     
     UIAlertAction * addImageAction = [UIAlertAction actionWithTitle:@"添加图片" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
@@ -61,8 +72,20 @@
                 [weakSelf.mlBtn setTitle:@"MLShow" forState:UIControlStateNormal];
             }
         }];
-        
-        
+    }];
+    
+    UIAlertAction * speechRecognitionAction = [UIAlertAction actionWithTitle:@"语音识别" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+        //语音识别功能最低支持系统为10.0
+        [self.viewModel speechRecognitionAction_Perfect:^(BOOL perfect, NSString *msg) {
+            if (perfect){
+                self.originalText = self.textView.text;
+                [weakSelf.mlBtn setTitle:@"完成识别" forState:UIControlStateNormal];
+                NSLog(@"开始识别");
+            }else{
+                [weakSelf showAlertControllerStyleAlert_code:msg];
+                [weakSelf.mlBtn setTitle:@"MLShow" forState:UIControlStateNormal];
+            }
+        }];
     }];
     
     UIAlertAction * cancalAction = [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
@@ -72,6 +95,7 @@
     [alertController addAction:addImageAction];
     [alertController addAction:addVideoAction];
     [alertController addAction:addVoiceAction];
+    [alertController addAction:speechRecognitionAction];
     [alertController addAction:cancalAction];
     
     [self presentViewController:alertController animated:YES completion:nil];
@@ -193,6 +217,14 @@
     }];
     [alertController addAction:okAction];
     [self presentViewController:alertController animated:YES completion:nil];
+}
+
+- (void)identifyResults:(NSString *)code{
+    self.textView.text = [NSString stringWithFormat:@"%@%@",self.originalText,code];
+}
+- (void)identifyFinish{
+    NSLog(@"识别结束");
+    [self.mlBtn setTitle:@"MLShow" forState:UIControlStateNormal];
 }
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
